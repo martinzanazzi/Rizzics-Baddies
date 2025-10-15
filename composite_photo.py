@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
 
-video_path = "/Users/martinzanazzi/Desktop/IMG_4858.MOV"
+video_path = "/Users/lilianstutz/Desktop/PHYS 3115/IMG_0443.MOV"
+
 cap = cv2.VideoCapture(video_path)
 
 ret, prev_frame = cap.read()
@@ -25,16 +26,16 @@ while True:
 
         # Convert to grayscale and threshold
         gray_diff = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
-        _, mask = cv2.threshold(gray_diff, 9, 255, cv2.THRESH_BINARY)
+        _, mask = cv2.threshold(gray_diff, 10, 255, cv2.THRESH_BINARY)
 
         # Use mask to accumulate moving areas
         mask_3ch = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
-        accumulated = np.clip(accumulated + (mask_3ch // 255) * 10, 0, 255).astype(np.uint8)
+        accumulated = np.clip(accumulated + (mask_3ch // 255) * 5, 0, 255).astype(np.uint8)
 
     prev_frame = frame.copy()
     frame_count += 1
 
 cap.release()
 
-cv2.imwrite("/Users/martinzanazzi/Desktop/laser_motion_composite.png", accumulated)
+cv2.imwrite("/Users/lilianstutz/Desktop/PHYS 3115/composite_photo.png", accumulated)
 print("Saved motion composite ✅")
