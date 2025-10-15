@@ -4,7 +4,7 @@ import cv2  # Import OpenCV library for video capture, display, and image proces
 cap = cv2.VideoCapture(0)  
 ret, prev_frame = cap.read()
 prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
-prev_gray = cv2.GaussianBlur(prev_gray, (7, 7), 0)
+prev_gray = cv2.GaussianBlur(prev_gray, (1, 1), 0)
 
 # Start infinite loop to grab frames from camera
 while True:
@@ -17,14 +17,14 @@ while True:
         break  # Exit loop if camera feed fails
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    gray = cv2.GaussianBlur(gray, (7, 7), 0)
+    gray = cv2.GaussianBlur(gray, (1, 1), 0)
 
     # Frame differencing: highlights new streaks or motion
     diff = cv2.absdiff(prev_gray, gray)
 
-    _, thresh = cv2.threshold(diff, 3, 255, cv2.THRESH_BINARY)
+    _, thresh = cv2.threshold(diff, 5, 255, cv2.THRESH_BINARY)
 
-    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.HoughLines(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE, 2)
 
     cv2.imshow("iPhone Feed via OBS", frame)  # Display current frame in a window
 
