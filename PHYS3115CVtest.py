@@ -6,13 +6,13 @@ ret, prev_frame = cap.read()
 prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
 prev_gray = cv2.GaussianBlur(prev_gray, (1, 1), 0)
 
-alpha = 0.2  # background update speed (smaller = slower background)
+alpha = 0.3  # background update speed (smaller = slower background)
 ret, frame = cap.read()
 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 background = gray.astype("float")
 
 trail = None          # <--- NEW: stores fading trails
-trail_decay = 0.067   # <--- roughly 1/15 for 0.5s persistence at 30 fps
+trail_decay = 0.1   # <--- roughly 1/15 for 0.5s persistence at 30 fps
 
 while True:
     ret, frame = cap.read()
