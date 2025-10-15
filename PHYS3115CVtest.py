@@ -3,8 +3,6 @@ import cv2  # Import OpenCV library for video capture, display, and image proces
 # 0 = first camera detected by OS (your iPhone via OBS Virtual Camera / Continuity)
 cap = cv2.VideoCapture(0)  
 
-#hello martin!
-
 # Start infinite loop to grab frames from camera
 while True:
     ret, frame = cap.read()  # Grab a single frameq
