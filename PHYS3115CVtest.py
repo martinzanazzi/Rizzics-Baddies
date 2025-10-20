@@ -33,6 +33,17 @@ while True:
     cv2.accumulateWeighted(thresh, trail, trail_decay)
     trail_display = cv2.convertScaleAbs(trail)
 
+    # --- count distinct moving blobs ---
+    # (optional: use the trail or threshold image)
+    contours, _ = cv2.findContours(trail_display, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    track_count = 0
+    for c in contours:
+        area = cv2.contourArea(c)
+        if area > 300:  # filter small noise
+            track_count += 1
+            x, y, w, h = cv2.boundingRect(c)
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
     # Display results
     cv2.imshow("iPhone Feed via OBS", frame)
     cv2.imshow("Detected Trails (Persistent)", trail_display)
