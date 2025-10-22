@@ -1,0 +1,91 @@
+import cv2
+import numpy as np
+import os
+
+print("🎥 Motion Tracker")
+print("-----------------")
+choice = input("Type 'v' for video file or 'l' for live camera feed: ").strip().lower()
+
+if choice == "v":
+    use_video = True
+    video_path = input("Enter full path to your video file: ").strip()
+else:
+    use_video = False
+    video_path = None
+
+# --- OPEN CAPTURE SOURCE ---
+cap = None
+if use_video and video_path and os.path.exists(video_path):
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        print(f"⚠️  Could not open '{video_path}'. Falling back to live camera...")
+        cap = cv2.VideoCapture(0)
+else:
+    print("📷 Using live camera feed...")
+    cap = cv2.VideoCapture(0)
+
+if not cap.isOpened():
+    print("❌ Error: Could not access camera or video.")
+    exit()
+
+# --- INITIAL SETUP ---
+ret, first_frame = cap.read()
+if not ret:
+    print("❌ Error: Could not read initial frame.")
+    cap.release()
+    exit()
+
+gray = cv2.cvtColor(first_frame, cv2.COLOR_BGR2GRAY)
+gray = cv2.GaussianBlur(gray, (3, 3), 0)
+background = gray.astype("float")
+
+alpha = 0.2
+trail = None
+trail_decay = 0.067
+
+print("\n✅ Tracking started. Press 'q' to quit.\n")
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        print("End of video or no frame received.")
+        break
+
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    gray = cv2.GaussianBlur(gray, (3, 3), 0)
+
+    # For video files, use a slower background update so motion stands out longer
+    adaptive_alpha = 0.05 if use_video else alpha
+    cv2.accumulateWeighted(gray, background, adaptive_alpha)
+    diff = cv2.absdiff(gray, cv2.convertScaleAbs(background))
+
+    # Lower threshold for video sensitivity
+    motion_threshold = 10 if use_video else 20
+    _, thresh = cv2.threshold(diff, motion_threshold, 255, cv2.THRESH_BINARY)
+
+    if trail is None:
+        trail = thresh.copy().astype("float")
+    cv2.accumulateWeighted(thresh, trail, trail_decay)
+    trail_display = cv2.convertScaleAbs(trail)
+
+    contours, _ = cv2.findContours(trail_display, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    track_count = 0
+    for c in contours:
+        area = cv2.contourArea(c)
+        if area > 300:
+            track_count += 1
+            x, y, w, h = cv2.boundingRect(c)
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+    cv2.putText(frame, f"Tracks: {track_count}", (20, 40),
+                cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
+
+    source_label = "Video File" if use_video else "Live Feed"
+    cv2.imshow(source_label, frame)
+    cv2.imshow("Detected Trails (Persistent)", trail_display)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
