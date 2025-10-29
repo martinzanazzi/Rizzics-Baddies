@@ -1,8 +1,11 @@
+exit()
+
 import cv2
 import numpy as np
 import os
+from datetime import datetime
 
-print("🎥 Motion Tracker")
+print("Motion Tracker")
 print("-----------------")
 choice = input("Type 'v' for video file or 'l' for live camera feed: ").strip().lower()
 
@@ -25,13 +28,13 @@ else:
     cap = cv2.VideoCapture(0)
 
 if not cap.isOpened():
-    print("❌ Error: Could not access camera or video.")
+    print("Error: Could not access camera or video.")
     exit()
 
 # --- INITIAL SETUP ---
 ret, first_frame = cap.read()
 if not ret:
-    print("❌ Error: Could not read initial frame.")
+    print("Error: Could not read initial frame.")
     cap.release()
     exit()
 
@@ -43,7 +46,22 @@ alpha = 0.2
 trail = None
 trail_decay = 0.067
 
-print("\n✅ Tracking started. Press 'q' to quit.\n")
+# --- SET UP VIDEO WRITER (RECORDER) ---
+timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+output_filename = f"motion_record_{timestamp}.avi"
+
+frame_height, frame_width = first_frame.shape[:2]
+fps = cap.get(cv2.CAP_PROP_FPS)
+if fps == 0 or np.isnan(fps):  # fallback if camera doesn’t provide FPS
+    fps = 20.0
+
+fourcc = cv2.VideoWriter_fourcc(*"XVID")  # Codec
+out = cv2.VideoWriter(output_filename, fourcc, fps, (frame_width, frame_height))
+
+print(f"\n🎥 Recording started — saving to '{output_filename}'")
+print("Press 'q' to quit.\n")
+
+# print("\nTracking started. Press 'q' to quit.\n")
 
 while True:
     ret, frame = cap.read()
@@ -80,6 +98,8 @@ while True:
     cv2.putText(frame, f"Tracks: {track_count}", (20, 40),
                 cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
 
+    # --- SHOW AND RECORD FRAME ---
+    out.write(frame)
     source_label = "Video File" if use_video else "Live Feed"
     cv2.imshow(source_label, frame)
     cv2.imshow("Detected Trails (Persistent)", trail_display)
@@ -88,4 +108,8 @@ while True:
         break
 
 cap.release()
+out.release()
 cv2.destroyAllWindows()
+
+
+print(f"\n Recording saved to '{output_filename}'")
