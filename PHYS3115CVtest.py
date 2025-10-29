@@ -1,13 +1,14 @@
 import cv2
 import numpy as np
 import time
+import matplotlib.pyplot as plt
 
 cap = cv2.VideoCapture(0)  
 ret, prev_frame = cap.read()
 prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
-prev_gray = cv2.GaussianBlur(prev_gray, (1, 1), 0)
+prev_gray = cv2.GaussianBlur(prev_gray, (3, 3), 0)
 
-alpha = 0.2  # background update speed (smaller = slower background)
+alpha = 0.2  # background update speed
 ret, frame = cap.read()
 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 background = gray.astype("float")
@@ -15,14 +16,17 @@ background = gray.astype("float")
 trail = None
 trail_decay = 0.067
 
-# warmup: ignore detections while background model stabilizes
 warmup_seconds = 5.0
 start_time = time.time()
 
-# --- NEW persistent counters ---
 total_count = 0
 prev_centroids = []
-min_dist = 30  # distance threshold (pixels) for "same" blob
+min_dist = 30  # pixels
+
+# --- arrays for plotting ---
+time_points = []
+track_counts = []
+last_record_time = time.time()
 
 while True:
     ret, frame = cap.read()
@@ -37,17 +41,14 @@ while True:
     diff = cv2.absdiff(gray, cv2.convertScaleAbs(background))
     _, thresh = cv2.threshold(diff, 3, 255, cv2.THRESH_BINARY)
 
-    # --- accumulate fading trail ---
     if trail is None:
         trail = thresh.copy().astype("float")
     cv2.accumulateWeighted(thresh, trail, trail_decay)
     trail_display = cv2.convertScaleAbs(trail)
 
-    # --- find moving blobs ---
     contours, _ = cv2.findContours(trail_display, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     curr_centroids = []
 
-    # compute warmup state
     elapsed = time.time() - start_time
     warming_up = elapsed < warmup_seconds
 
@@ -58,22 +59,26 @@ while True:
             cx = x + w // 2
             cy = y + h // 2
             curr_centroids.append((cx, cy))
-            # only draw bounding boxes after warmup
             if not warming_up:
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-    # --- detect new blobs (not near old ones) ---
     new_objects = 0
     for (cx, cy) in curr_centroids:
         if all(np.hypot(cx - px, cy - py) > min_dist for (px, py) in prev_centroids):
             new_objects += 1
 
-    # only update totals after warmup
     if not warming_up:
         total_count += new_objects
     prev_centroids = curr_centroids
 
-    # --- Display results ---
+    # --- record track count once per second ---
+    now = time.time()
+    if now - last_record_time >= 1.0:
+        time_points.append(now - start_time-5)
+        track_counts.append(total_count)
+        last_record_time = now
+
+    # --- display ---
     if warming_up:
         remaining = max(0.0, warmup_seconds - elapsed)
         cv2.putText(frame, f"Warming up: {remaining:.1f}s", (20, 40),
@@ -89,3 +94,12 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
+
+# --- plot results ---
+plt.figure(figsize=(8, 4))
+plt.plot(time_points, track_counts, marker='o')
+plt.title("Total Track Count Over Time")
+plt.xlabel("Time (s)")
+plt.ylabel("Total Tracks")
+plt.grid(True)
+plt.show()
